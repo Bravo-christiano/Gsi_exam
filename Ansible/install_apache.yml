@@ -1,0 +1,43 @@
+---
+- name: Installer et configurer Apache sur le serveur web
+  hosts: gsi_machines
+  become: yes
+  tasks:
+    - name: Installer Apache
+      apt:
+        name: apache2
+        state: present
+        update_cache: yes
+
+    - name: Assurer que Apache est en cours d'exécution
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: Vérifier si le fichier ports.conf existe
+      stat:
+        path: /etc/apache2/ports.conf
+      register: apache_ports_conf
+
+    - name: Créer le fichier ports.conf avec port 8081 si il n'existe pas
+      copy:
+        content: |
+          Listen 8081
+        dest: /etc/apache2/ports.conf
+        backup: yes
+      when: not apache_ports_conf.stat.exists
+
+    - name: Modifier le port d'écoute dans le fichier ports.conf
+      lineinfile:
+        path: /etc/apache2/ports.conf
+        regexp: '^Listen '
+        line: 'Listen 8081'
+        backup: yes
+      when: apache_ports_conf.stat.exists
+
+    - name: Redémarrer Apache après modification du port
+      service:
+        name: apache2
+        state: restarted
+
